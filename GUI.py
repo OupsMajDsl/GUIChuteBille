@@ -10,7 +10,6 @@ from PyQt5.QtGui import QIcon
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
 from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as NavigationToolbar
 
-
 class GUI(QDialog):
     def __init__(self):
         super(GUI, self).__init__()
@@ -18,19 +17,17 @@ class GUI(QDialog):
 
         self.Objets()
         self.display()
-        
-
 
     def Objets(self):
         self.figSpec = Figure(figsize=(8, 4), dpi=100)
         self.canvasSpec = FigureCanvas(self.figSpec)
         # self.toolbarSpec = NavigationToolbar(self.canvasSpec, self)
         self.figTemp = Figure(figsize=(8, 4), dpi=100)
-        self.canvasSpec = FigureCanvas(self.figTemp)
-
+        self.canvasTemp = FigureCanvas(self.figTemp)
         self.figMicro = Figure(figsize=(8, 4), dpi=100)
+        self.canvasMicro = FigureCanvas(self.figMicro)
         self.figSign = Figure(figsize=(15, 3), dpi=100)
-        
+        self.canvasSign = FigureCanvas(self.figSign)
 
         self.Slider = QSlider(Qt.Horizontal)
 
@@ -38,13 +35,16 @@ class GUI(QDialog):
         MainLayout = QVBoxLayout()
         grid = QGridLayout()
         # grid.addWidget(self.video, 0, 0)
-        grid.addWidget(self.figspec, 1, 0)
-        grid.addWidget(self.figtemp, 0, 1)
-        grid.addWidget(self.figmicro, 1, 1)
+        grid.addWidget(self.canvasSpec, 1, 0)
+        grid.addWidget(self.canvasTemp, 0, 1)
+        grid.addWidget(self.canvasMicro, 1, 1)
 
         MainLayout.addLayout(grid)
-        MainLayout.addWidget(self.figsign)
+        MainLayout.addWidget(self.canvasSign)
         MainLayout.addWidget(self.Slider)
+        self.setLayout(MainLayout)
+
+
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
