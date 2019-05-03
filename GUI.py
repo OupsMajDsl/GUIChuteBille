@@ -22,6 +22,8 @@ class GUI(QDialog):
         self.pathVid = "/media/mathieu/Nouveau nom/videos_bille/{}.avi"
         self.pathTxt = "/media/mathieu/Nouveau nom/mesures_acous/{}.txt"
 
+        self.length = 2000
+
         # Fonction à appeler dans l'initialisation
         self.Objets()
         self.display()
@@ -62,7 +64,7 @@ class GUI(QDialog):
     def display(self):
         MainLayout = QVBoxLayout()
         grid = QGridLayout()
-        grid.addWidget(self.figVid, 0, 0)
+        grid.addWidget(self.canvasVid, 0, 0)
         grid.addWidget(self.canvasSpec, 0, 1)
         grid.addWidget(self.canvasTemp, 1, 1)
         grid.addWidget(self.canvasMicro, 1, 0)
@@ -70,7 +72,7 @@ class GUI(QDialog):
         HLayout = QHBoxLayout()
         HLayout.addWidget(self.filename)
         HLayout.addWidget(self.load)
-        HLayout.addWidget(self.status)
+        HLayout.addWidget(self.WindowSize)
         MainLayout.addLayout(HLayout)
         MainLayout.addLayout(grid)
         MainLayout.addWidget(self.canvasSign)
@@ -81,16 +83,9 @@ class GUI(QDialog):
 # mes_haut3_bille2_1
     def loadFiles(self):
         filename = self.filename.text()
-        self.status.setText("Chargement en cours")
         self.cvVideo = cv2.VideoCapture(self.pathVid.format(filename))
         self.data = np.loadtxt(self.pathTxt.format(filename))
-
-        fps = self.cvVideo.get(cv2.CAP_PROP_FPS)
-        self.length = self.cvVideo.get(cv2.CAP_PROP_FRAME_COUNT)
-
-
         self.plot()
-        self.status.setText("")
 
     def SliderUpdate(self):
         print(str(self.Slider.value()))
@@ -106,30 +101,25 @@ class GUI(QDialog):
         self.figSign.clear()
         ax = self.figSign.add_subplot(111)
         ax.plot(time, hydro)
-        ax.axvline(self.mil_fen - self.WindowSize, color='r')
-        ax.axvline(self.mil_fen + self.WindowSize, color='r')
+        ax.axvline(MidFen - float(self.WindowSize.text()), color='r')
+        ax.axvline(MidFen + float(self.WindowSize.text()), color='r')
+        ax.fill_between()
         self.canvasSign.draw()
 
         # Tracé temporel du microphone
         self.figMicro.clear()
         ax = self.figMicro.add_subplot(111)
         ax.plot(time, micro)
-        ax.set_xlim(self.mil_fen - self.WindowSize, self.mil_fen + self.WindowSize)
+        ax.set_xlim(MidFen - float(self.WindowSize.text()), MidFen + float(self.WindowSize.text()))
         ax.set_title("Micro")
-        ax.relim()
-        ax.autoscale_view(scaley=True)
-
         self.canvasMicro.draw()
 
         # Tracé temporel de l'hydrophone
         self.figTemp.clear()
         ax = self.figTemp.add_subplot(111)
         ax.plot(time, hydro)
-        ax.set_xlim(self.mil_fen - self.WindowSize, self.mil_fen + self.WindowSize)
+        ax.set_xlim(MidFen - float(self.WindowSize.text()), MidFen + float(self.WindowSize.text()))
         ax.set_title("Hydrophone temporel")
-        ax.relim()
-        ax.autoscale_view(scaley=True)
-        plt.autoscale(True)
         self.canvasTemp.draw()
 
         self.figSpec.clear()
@@ -137,10 +127,22 @@ class GUI(QDialog):
         fs = len(time) / max(time)
         f, t, spectrogram = sig.spectrogram(hydro, fs)
         ax.pcolormesh(t, f, spectrogram, cmap='Greens')
-        ax.set_xlim(self.mil_fen - self.WindowSize, self.mil_fen + self.WindowSize)
+        ax.set_xlim(MidFen - float(self.WindowSize.text()), MidFen + float(self.WindowSize.text()))
         ax.set_title("Hydrophone spectrogramme")
         ax.set_ylim(0, 30e3)
         self.canvasSpec.draw()
+
+        self.figVid.clear()
+
+        # Extraction d'une certaine frame de la vidéo
+        fps = self.cvVideo.get(cv2.CAP_PROP_FPS)
+        self.length = self.cvVideo.get(cv2.CAP_PROP_FRAME_COUNT)
+        self.cvVideo.set(cv2.CAP_PROP_POS_FRAMES, self.Slider.value())
+        ret, self.frame = self.cvVideo.read()
+
+        ax = self.figVid.add_subplot(111)
+        ax.imshow(self.frame)
+        self.canvasVid.draw()
 
 
     def testVideo(self):
