@@ -5,11 +5,7 @@ import matplotlib.pyplot as plt
 from matplotlib.figure import Figure
 from PyQt5.QtWidgets import (QDialog, QApplication, QPushButton, QLabel, QCheckBox, QComboBox,
                             QVBoxLayout, QHBoxLayout, QGridLayout, QFileDialog, QMessageBox,
-<<<<<<< HEAD
-                            QSpacerItem, QFrame, QSlider)
-=======
                             QSpacerItem, QFrame, QSlider, QLineEdit)
->>>>>>> 2bdc20a6af37c348185332444f6ed6e9ac2fa088
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -63,11 +59,6 @@ class GUI(QDialog):
         MainLayout.addWidget(self.Slider)
         self.setLayout(MainLayout)
 
-<<<<<<< HEAD
-    def testVideo(self):
-        path = "/media/mathieu/Nouveau nom/videos_bille/{}.avi".format(self.filename)
-        self.cvVideo = cv2.VideoCapture(path)
-=======
 
     def loadFiles(self):
         filename = self.filename.text()
@@ -86,7 +77,6 @@ class GUI(QDialog):
         ax.plot(time, hydro)
 
     def testVideo(self):
->>>>>>> 2bdc20a6af37c348185332444f6ed6e9ac2fa088
         length = int(self.cvVideo.get(cv2.CAP_PROP_FRAME_COUNT))
         width = int(self.cvVideo.get(cv2.CAP_PROP_FRAME_WIDTH))
         height = int(self.cvVideo.get(cv2.CAP_PROP_FRAME_HEIGHT))
