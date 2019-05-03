@@ -21,6 +21,7 @@ class GUI(QDialog):
         # Chemin des différents fichiers à charger
         self.pathVid = "/media/mathieu/Nouveau nom/videos_bille/{}.avi"
         self.pathTxt = "/media/mathieu/Nouveau nom/mesures_acous/{}.txt"
+        self.pathCih = "/media/mathieu/Nouveau nom/mesures_acous/{}.cih"
 
         self.length = 2000
 
@@ -68,11 +69,12 @@ class GUI(QDialog):
         grid.addWidget(self.canvasSpec, 0, 1)
         grid.addWidget(self.canvasTemp, 1, 1)
         grid.addWidget(self.canvasMicro, 1, 0)
-        
+
         HLayout = QHBoxLayout()
         HLayout.addWidget(self.filename)
         HLayout.addWidget(self.load)
         HLayout.addWidget(self.WindowSize)
+
         MainLayout.addLayout(HLayout)
         MainLayout.addLayout(grid)
         MainLayout.addWidget(self.canvasSign)
@@ -86,6 +88,13 @@ class GUI(QDialog):
         self.cvVideo = cv2.VideoCapture(self.pathVid.format(filename))
         self.data = np.loadtxt(self.pathTxt.format(filename))
         self.plot()
+        with open(self.pathCih) as file:
+            lines = file.readlines()
+            for line in lines:
+                if line.startswith('Record Rate(fps) :'):
+                    fps = int(line.split(' : ')[1])
+                if line.startswith('Start Frame :'):
+                    startFrame = int(line.split(' : ')[1])
 
     def SliderUpdate(self):
         print(str(self.Slider.value()))
@@ -144,12 +153,6 @@ class GUI(QDialog):
         ax.imshow(self.frame)
         self.canvasVid.draw()
 
-
-    def testVideo(self):
-        length = int(self.cvVideo.get(cv2.CAP_PROP_FRAME_COUNT))
-        width = int(self.cvVideo.get(cv2.CAP_PROP_FRAME_WIDTH))
-        height = int(self.cvVideo.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        rate = int(self.cvVideo.get(cv2.CAP_PROP_POS_FRAMES))
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
