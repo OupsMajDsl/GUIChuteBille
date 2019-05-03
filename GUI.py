@@ -1,3 +1,4 @@
+"""Routine permettant de synchroniser un fichier vidéo avec les signaux temporels afin de faciliter l'analyse de ces derniers."""
 import sys
 import cv2
 import numpy as np
@@ -5,8 +6,8 @@ import matplotlib.pyplot as plt
 import scipy.signal as sig
 from matplotlib.figure import Figure
 from PyQt5.QtWidgets import (QDialog, QApplication, QPushButton, QLabel, QCheckBox, QComboBox,
-                            QVBoxLayout, QHBoxLayout, QGridLayout, QFileDialog, QMessageBox,
-                            QSpacerItem, QFrame, QSlider, QLineEdit)
+                             QVBoxLayout, QHBoxLayout, QGridLayout, QFileDialog, QMessageBox,
+                             QSpacerItem, QFrame, QSlider, QLineEdit)
 from PyQt5.QtCore import Qt
 from PyQt5.QtGui import QIcon
 from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg as FigureCanvas
@@ -14,19 +15,25 @@ from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as Navigatio
 
 
 class GUI(QDialog):
+    """GUI definition."""
+
     def __init__(self):
         super(GUI, self).__init__()
         self.setWindowTitle("Synchronisation Audio/vidéo pour la chute de billes")
 
         # Chemin des différents fichiers à charger
-        self.pathVid = "/media/mathieu/Nouveau nom/videos_bille/{}.avi"
-        self.pathTxt = "/media/mathieu/Nouveau nom/mesures_acous/{}.txt"
-        self.pathCih = "/media/mathieu/Nouveau nom/videos_bille/{}.cih"
+        # self.pathVid = "/media/mathieu/Nouveau nom/videos_bille/{}.avi"
+        # self.pathTxt = "/media/mathieu/Nouveau nom/mesures_acous/{}.txt"
+        # self.pathCih = "/media/mathieu/Nouveau nom/videos_bille/{}.cih"
 
-        self.length = 1000 # à enlever
+        self.pathVid = "/home/fabouzz/Vidéos/{}.avi"
+        self.pathTxt = "/home/fabouzz/Vidéos/mesures_acous/{}.txt"
+        self.pathCih = "/home/fabouzz/Vidéos/{}.cih"
+
+        self.length = 1000  # à enlever
 
         # Position des capteurs
-        self.impact = [155e-3, 45e-3, 290e-3] # Coordonnées x, y, z de l'impact
+        self.impact = [155e-3, 45e-3, 290e-3]  # Coordonnées x, y, z de l'impact
         self.micro = [200e-3, 50e-3, 330e-3]
         self.hydro = [100e-3, 80e-3, 270e-3]
 
@@ -35,21 +42,23 @@ class GUI(QDialog):
         self.display()
 
     def Objets(self):
+        """Define visual objets to place in GUI."""
         self.filename = QLineEdit("mes_haut3_bille2_1")
         self.load = QPushButton("Charger")
         self.load.clicked.connect(self.loadFiles)
         self.WindowSize = QLineEdit("30e-3")
 
         # Création des objets figure
-            # Spectrogramme de l'hydrophone
+
+        # Spectrogramme de l'hydrophone
         self.figSpec = Figure(figsize=(8, 4), dpi=100, tight_layout=True)
-            # Allure temporelle de l'hydrohpone
+        # Allure temporelle de l'hydrohpone
         self.figTemp = Figure(figsize=(8, 4), dpi=100, tight_layout=True)
-            # Allure temporelle du microphone
+        # Allure temporelle du microphone
         self.figMicro = Figure(figsize=(8, 4), dpi=100, tight_layout=True)
-            # Allure globale du signal pour savoir où on se place
+        # Allure globale du signal pour savoir où on se place
         self.figSign = Figure(figsize=(19, 3), dpi=100, tight_layout=True)
-            # Figure contenant l'image de la vidéo
+        # Figure contenant l'image de la vidéo
         self.figVid = Figure(figsize=(8, 4), dpi=100, tight_layout=True)
 
         # Création des canvas contenant les figures
@@ -68,6 +77,7 @@ class GUI(QDialog):
         self.Slider.valueChanged.connect(self.SliderUpdate)
 
     def display(self):
+        """GUI layout using previous Objets."""
         MainLayout = QVBoxLayout()
         grid = QGridLayout()
         grid.addWidget(self.canvasVid, 0, 0)
@@ -89,6 +99,7 @@ class GUI(QDialog):
 
 # mes_haut3_bille2_1
     def loadFiles(self):
+        """Load file function."""
         filename = self.filename.text()
         self.cvVideo = cv2.VideoCapture(self.pathVid.format(filename))
         self.data = np.loadtxt(self.pathTxt.format(filename))
@@ -102,10 +113,12 @@ class GUI(QDialog):
                     self.startFrame = int(line.split(' : ')[1])
 
     def SliderUpdate(self):
+        """Update the bottom screen slider. Useful for updating datas."""
         print(str(self.Slider.value()))
         self.plot(pos=self.Slider.value())
 
     def plot(self, pos=0):
+        """Plotting a video frame, temporal signalsand spectorgam on the GUI.""""
         MidFen = pos / self.length
         time = self.data[:, 0]
         micro = self.data[:, 1]
@@ -162,16 +175,17 @@ class GUI(QDialog):
         self.canvasVid.draw()
 
     def tdv(self):
+        """Calculate wave flight time in water and air for sync."""
         c_air = 343
         c_eau = 1500
 
-        d_micro = np.sqrt((self.micro[0] - self.impact[0])**2 
-                    + (self.micro[1] - self.impact[1])**2 
-                    + (self.micro[2] - self.impact[2])**2)
+        d_micro = np.sqrt((self.micro[0] - self.impact[0])**2 +
+                          (self.micro[1] - self.impact[1])**2 +
+                          (self.micro[2] - self.impact[2])**2)
 
-        d_hydro = np.sqrt((self.hydro[0] - self.impact[0])**2 
-                    + (self.hydro[1] - self.impact[1])**2 
-                    + (self.hydro[2] - self.impact[2])**2)
+        d_hydro = np.sqrt((self.hydro[0] - self.impact[0])**2 +
+                          (self.hydro[1] - self.impact[1])**2 +
+                          (self.hydro[2] - self.impact[2])**2)
 
         tdv_micro = d_micro / c_air
         tdv_hydro = d_hydro / c_eau
