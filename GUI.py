@@ -22,9 +22,14 @@ class GUI(QDialog):
         self.pathVid = "/media/mathieu/Nouveau nom/videos_bille/{}.avi"
         self.pathTxt = "/media/mathieu/Nouveau nom/mesures_acous/{}.txt"
 
+<<<<<<< HEAD
         self.length = 1000
 
         # Fonction à appeler dans l'initialisation
+=======
+        self.filename = "mes_cam_bille1_1"
+
+>>>>>>> 23f5c13a68989a91d8cb42be22050662cc7dba33
         self.Objets()
         self.display()
 
@@ -64,11 +69,19 @@ class GUI(QDialog):
     def display(self):
         MainLayout = QVBoxLayout()
         grid = QGridLayout()
+<<<<<<< HEAD
         grid.addWidget(self.figVid, 0, 0)
         grid.addWidget(self.canvasSpec, 0, 1)
         grid.addWidget(self.canvasTemp, 1, 1)
         grid.addWidget(self.canvasMicro, 1, 0)
         
+=======
+        grid.addWidget(self.video, 0, 0)
+        grid.addWidget(self.canvasSpec, 1, 0)
+        grid.addWidget(self.canvasTemp, 0, 1)
+        grid.addWidget(self.canvasMicro, 1, 1)
+
+>>>>>>> 23f5c13a68989a91d8cb42be22050662cc7dba33
         HLayout = QHBoxLayout()
         HLayout.addWidget(self.filename)
         HLayout.addWidget(self.load)
