@@ -21,9 +21,14 @@ class GUI(QDialog):
         # Chemin des différents fichiers à charger
         self.pathVid = "/media/mathieu/Nouveau nom/videos_bille/{}.avi"
         self.pathTxt = "/media/mathieu/Nouveau nom/mesures_acous/{}.txt"
-        self.pathCih = "/media/mathieu/Nouveau nom/mesures_acous/{}.cih"
+        self.pathCih = "/media/mathieu/Nouveau nom/videos_bille/{}.cih"
 
-        self.length = 2000
+        self.length = 1000 # à enlever
+
+        # Position des capteurs
+        self.impact = [155e-3, 45e-3, 290e-3] # Coordonnées x, y, z de l'impact
+        self.micro = [200e-3, 50e-3, 330e-3]
+        self.hydro = [100e-3, 80e-3, 270e-3]
 
         # Fonction à appeler dans l'initialisation
         self.Objets()
@@ -37,15 +42,15 @@ class GUI(QDialog):
 
         # Création des objets figure
             # Spectrogramme de l'hydrophone
-        self.figSpec = Figure(figsize=(8, 4), dpi=100)
+        self.figSpec = Figure(figsize=(8, 4), dpi=100, tight_layout=True)
             # Allure temporelle de l'hydrohpone
-        self.figTemp = Figure(figsize=(8, 4), dpi=100)
+        self.figTemp = Figure(figsize=(8, 4), dpi=100, tight_layout=True)
             # Allure temporelle du microphone
-        self.figMicro = Figure(figsize=(8, 4), dpi=100)
+        self.figMicro = Figure(figsize=(8, 4), dpi=100, tight_layout=True)
             # Allure globale du signal pour savoir où on se place
-        self.figSign = Figure(figsize=(19, 3), dpi=100)
+        self.figSign = Figure(figsize=(19, 3), dpi=100, tight_layout=True)
             # Figure contenant l'image de la vidéo
-        self.figVid = Figure(figsize=(8, 4), dpi=100)
+        self.figVid = Figure(figsize=(8, 4), dpi=100, tight_layout=True)
 
         # Création des canvas contenant les figures
         self.canvasSpec = FigureCanvas(self.figSpec)
@@ -57,8 +62,8 @@ class GUI(QDialog):
         # self.toolbarSpec = NavigationToolbar(self.canvasSpec, self)
         self.Slider = QSlider(Qt.Horizontal)
         self.Slider.setMinimum(0)
-        self.Slider.setMaximum(self.length)
-        self.Slider.setTickInterval(1)
+        self.Slider.setMaximum(100)
+        self.Slider.setTickInterval(0.01)
         self.Slider.setValue(0)
         self.Slider.valueChanged.connect(self.SliderUpdate)
 
@@ -88,13 +93,13 @@ class GUI(QDialog):
         self.cvVideo = cv2.VideoCapture(self.pathVid.format(filename))
         self.data = np.loadtxt(self.pathTxt.format(filename))
         self.plot()
-        with open(self.pathCih) as file:
+        with open(self.pathCih.format(filename)) as file:
             lines = file.readlines()
             for line in lines:
                 if line.startswith('Record Rate(fps) :'):
                     fps = int(line.split(' : ')[1])
                 if line.startswith('Start Frame :'):
-                    startFrame = int(line.split(' : ')[1])
+                    self.startFrame = int(line.split(' : ')[1])
 
     def SliderUpdate(self):
         print(str(self.Slider.value()))
@@ -112,7 +117,9 @@ class GUI(QDialog):
         ax.plot(time, hydro)
         ax.axvline(MidFen - float(self.WindowSize.text()), color='r')
         ax.axvline(MidFen + float(self.WindowSize.text()), color='r')
-        ax.fill_between()
+        ax.set_xticks([])
+        ax.set_yticks([])
+        # ax.fill_between()
         self.canvasSign.draw()
 
         # Tracé temporel du microphone
@@ -140,7 +147,6 @@ class GUI(QDialog):
         ax.set_title("Hydrophone spectrogramme")
         ax.set_ylim(0, 30e3)
         self.canvasSpec.draw()
-
         self.figVid.clear()
 
         # Extraction d'une certaine frame de la vidéo
@@ -151,7 +157,24 @@ class GUI(QDialog):
 
         ax = self.figVid.add_subplot(111)
         ax.imshow(self.frame)
+        ax.set_xticks([])
+        ax.set_yticks([])
         self.canvasVid.draw()
+
+    def tdv(self):
+        c_air = 343
+        c_eau = 1500
+
+        d_micro = np.sqrt((self.micro[0] - self.impact[0])**2 
+                    + (self.micro[1] - self.impact[1])**2 
+                    + (self.micro[2] - self.impact[2])**2)
+
+        d_hydro = np.sqrt((self.hydro[0] - self.impact[0])**2 
+                    + (self.hydro[1] - self.impact[1])**2 
+                    + (self.hydro[2] - self.impact[2])**2)
+
+        tdv_micro = d_micro / c_air
+        tdv_hydro = d_hydro / c_eau
 
 
 if __name__ == '__main__':
