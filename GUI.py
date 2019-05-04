@@ -32,7 +32,6 @@ class GUI(QDialog):
         self.pathCih = "/home/fabouzz/Vidéos/{}.cih"
 
         self.vidLength = 1000
-        print(self.vidLength)
 
         # Position des capteurs
         self.impact = [155e-3, 45e-3, 290e-3]  # Coordonnées x, y, z de l'impact
@@ -126,7 +125,7 @@ class GUI(QDialog):
 
     def SliderUpdate(self):
         """Update the bottom screen slider. Useful for updating datas."""
-        print(str(self.Slider.value()))
+        # print(str(self.Slider.value()))
         self.plot(pos=self.Slider.value())
 
     def plot(self, pos=0):
@@ -152,6 +151,7 @@ class GUI(QDialog):
         ax = self.figMicro.add_subplot(111)
         ax.plot(time, micro)
         ax.set_xlim(MidFen - float(self.WindowSize.text()), MidFen + float(self.WindowSize.text()))
+        ax.axvline(MidFen, color='r')
         ax.set_title("Micro")
         self.canvasMicro.draw()
 
@@ -160,15 +160,18 @@ class GUI(QDialog):
         ax = self.figTemp.add_subplot(111)
         ax.plot(time, hydro)
         ax.set_xlim(MidFen - float(self.WindowSize.text()), MidFen + float(self.WindowSize.text()))
+        ax.axvline(MidFen, color='r')
         ax.set_title("Hydrophone temporel")
         self.canvasTemp.draw()
 
+        # Tracé du spectrogramme
         self.figSpec.clear()
         ax = self.figSpec.add_subplot(111)
         fs = len(time) / max(time)
         f, t, spectrogram = sig.spectrogram(hydro, fs)
         ax.pcolormesh(t, f, spectrogram, cmap='Greens')
         ax.set_xlim(MidFen - float(self.WindowSize.text()), MidFen + float(self.WindowSize.text()))
+        ax.axvline(MidFen, color='r')
         ax.set_title("Hydrophone spectrogramme")
         ax.set_ylim(0, 30e3)
         self.canvasSpec.draw()
