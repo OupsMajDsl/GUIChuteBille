@@ -30,7 +30,8 @@ class GUI(QDialog):
         self.pathTxt = "/home/fabouzz/Vidéos/mesures_acous/{}.txt"
         self.pathCih = "/home/fabouzz/Vidéos/{}.cih"
 
-        self.length = 1000  # à enlever
+        self.vidLength = 1000
+        print(self.vidLength)
 
         # Position des capteurs
         self.impact = [155e-3, 45e-3, 290e-3]  # Coordonnées x, y, z de l'impact
@@ -68,11 +69,12 @@ class GUI(QDialog):
         self.canvasSign = FigureCanvas(self.figSign)
         self.canvasVid = FigureCanvas(self.figVid)
 
+        # Crétion du slider
         # self.toolbarSpec = NavigationToolbar(self.canvasSpec, self)
         self.Slider = QSlider(Qt.Horizontal)
         self.Slider.setMinimum(0)
         self.Slider.setMaximum(100)
-        self.Slider.setTickInterval(0.01)
+        self.Slider.setTickInterval(1)
         self.Slider.setValue(0)
         self.Slider.valueChanged.connect(self.SliderUpdate)
 
@@ -96,14 +98,22 @@ class GUI(QDialog):
         MainLayout.addWidget(self.Slider)
         self.setLayout(MainLayout)
 
+    def changeSliderMax(self):
+        filename = self.filename.text()
+        with open(self.pathCih.format(filename)) as file:
+            lines = file.readlines()
+            for line in lines:
+                if line.startswith('Total Frame :'):
+                    self.vidLength = int(line.split(' : ')[1])
+        self.Slider.setMaximum(self.vidLength)
 
-# mes_haut3_bille2_1
     def loadFiles(self):
         """Load file function."""
         filename = self.filename.text()
         self.cvVideo = cv2.VideoCapture(self.pathVid.format(filename))
         self.data = np.loadtxt(self.pathTxt.format(filename))
         self.plot()
+        self.changeSliderMax()
         with open(self.pathCih.format(filename)) as file:
             lines = file.readlines()
             for line in lines:
@@ -118,8 +128,8 @@ class GUI(QDialog):
         self.plot(pos=self.Slider.value())
 
     def plot(self, pos=0):
-        """Plotting a video frame, temporal signalsand spectorgam on the GUI.""""
-        MidFen = pos / self.length
+        """Plot a video frame, temporal signals and spectorgam on the GUI."""
+        MidFen = pos / self.vidLength
         time = self.data[:, 0]
         micro = self.data[:, 1]
         hydro = self.data[:, 2]
@@ -163,8 +173,6 @@ class GUI(QDialog):
         self.figVid.clear()
 
         # Extraction d'une certaine frame de la vidéo
-        fps = self.cvVideo.get(cv2.CAP_PROP_FPS)
-        self.length = self.cvVideo.get(cv2.CAP_PROP_FRAME_COUNT)
         self.cvVideo.set(cv2.CAP_PROP_POS_FRAMES, self.Slider.value())
         ret, self.frame = self.cvVideo.read()
 
