@@ -15,9 +15,10 @@ from matplotlib.backends.backend_qt5agg import NavigationToolbar2QT as Navigatio
 
 
 class GUI(QDialog):
-    """GUI definition."""
+    """GUI class."""
 
     def __init__(self):
+        """GUI definition."""
         super(GUI, self).__init__()
         self.setWindowTitle("Synchronisation Audio/vidéo pour la chute de billes")
 
@@ -99,6 +100,7 @@ class GUI(QDialog):
         self.setLayout(MainLayout)
 
     def changeSliderMax(self):
+        """Change slider maximum position for slider/vid sync once video loaded"""
         filename = self.filename.text()
         with open(self.pathCih.format(filename)) as file:
             lines = file.readlines()
