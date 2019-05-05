@@ -120,15 +120,15 @@ class GUI(QDialog):
         self.vidStart = self.startFrame / self.fps
         self.vidEnd = (self.startFrame + self.nFrames) / self.fps
 
-        print('Start frame : {}, End frame : {}, nFrames : {}'.format(self.startFrame, (self.startFrame + self.nFrames), self.nFrames))
-        print('Start time : {}, End time : {}, vidLength : {}'.format(self.vidStart, self.vidEnd, self.nFrames / self.fps))
+        # print('Start frame : {}, End frame : {}, nFrames : {}'.format(self.startFrame, (self.startFrame + self.nFrames), self.nFrames))
+        # print('Start time : {}, End time : {}, vidLength : {}'.format(self.vidStart, self.vidEnd, self.nFrames / self.fps))
 
         self.Slider.setMaximum(self.nFrames)
         self.plot()
 
     def sliderUpdate(self):
         """Update the bottom screen slider. Useful for updating datas."""
-        print('SliderVal : {}'.format(str(self.Slider.value())))
+        # print('SliderVal : {}'.format(str(self.Slider.value())))
         self.plot(pos=self.Slider.value())
 
     def flightTime(self):
@@ -160,15 +160,13 @@ class GUI(QDialog):
         time = self.data[startEch:endEch + 1, 0]  # Slice des valeurs de signal correspondant à la vidéo
         micro = self.data[startEch:endEch + 1, 1]  # endEch + 1 car le dernier élément n'est pas compris dans le slice
         hydro = self.data[startEch:endEch + 1, 2]
-        hydspec = self.data[:, 2]
-        timeh = self.data[:, 0]
-        print('Measure start : {}, Measure end : {}'.format(time[0], time[-1]))
+        # print('Measure start : {}, Measure end : {}'.format(time[0], time[-1]))
         # Extraction d'une certaine frame de la vidéo
         self.cvVideo.set(cv2.CAP_PROP_POS_FRAMES, self.Slider.value())
-        print('Current frame : {}'.format(self.cvVideo.get(cv2.CAP_PROP_POS_FRAMES)))
+        # print('Current frame : {}'.format(self.cvVideo.get(cv2.CAP_PROP_POS_FRAMES)))
         ret, self.frame = self.cvVideo.read()
         currentTime = (self.cvVideo.get(cv2.CAP_PROP_POS_FRAMES) + self.startFrame) / self.fps
-        print('Current time : {}'.format(currentTime))
+        # print('Current time : {}'.format(currentTime))
 
         ax = self.figVid.add_subplot(111)
         ax.imshow(self.frame)
@@ -181,8 +179,8 @@ class GUI(QDialog):
         ax = self.figSign.add_subplot(111)
         ax.plot(time, hydro)
         ax.set_xlim(time[0], time[-1])
-        ax.axvline(currentTime - float(self.WindowSize.text()), color='r')
-        ax.axvline(currentTime + float(self.WindowSize.text()), color='r')
+        ax.axvline(currentTime + self.tdv_hydro - float(self.WindowSize.text()), color='r')
+        ax.axvline(currentTime + self.tdv_hydro + float(self.WindowSize.text()), color='r')
         ax.set_xticks([])
         ax.set_yticks([])
         # ax.fill_between()
@@ -192,8 +190,8 @@ class GUI(QDialog):
         self.figMicro.clear()
         ax = self.figMicro.add_subplot(111)
         ax.plot(time, micro)
-        ax.set_xlim(currentTime - float(self.WindowSize.text()), currentTime + float(self.WindowSize.text()))
-        ax.axvline(currentTime, color='r')
+        ax.set_xlim(currentTime + self.tdv_micro - float(self.WindowSize.text()), currentTime + self.tdv_micro + float(self.WindowSize.text()))
+        ax.axvline(currentTime + self.tdv_micro, color='r')
         ax.set_title("Micro")
         self.canvasMicro.draw()
 
@@ -201,15 +199,16 @@ class GUI(QDialog):
         self.figTemp.clear()
         ax = self.figTemp.add_subplot(111)
         ax.plot(time, hydro)
-        ax.set_xlim(currentTime - float(self.WindowSize.text()), currentTime + float(self.WindowSize.text()))
-        ax.axvline(currentTime, color='r')
+        ax.set_xlim(currentTime + self.tdv_hydro - float(self.WindowSize.text()), currentTime + self.tdv_hydro + float(self.WindowSize.text()))
+        ax.axvline(currentTime + self.tdv_hydro, color='r')
         ax.set_title("Hydrophone temporel")
+        ax.autoscale(enable=True, axis='y', tight=False)
         self.canvasTemp.draw()
 
         # Tracé du spectrogramme
         self.figSpec.clear()
         ax = self.figSpec.add_subplot(111)
-        f, t, spectrogram = sig.spectrogram(hydspec, self.fEch)
+        f, t, spectrogram = sig.spectrogram(hydro, self.fEch)
         ax.pcolormesh(t, f, spectrogram, cmap='Greens')
         # ax.set_xlim(currentTime - float(self.WindowSize.text()), currentTime + float(self.WindowSize.text()))
         ax.axvline(currentTime, color='r')
