@@ -32,7 +32,7 @@ class GUI(QDialog):
         self.pathCih = "/home/fabouzz/Vidéos/mesuresBille/{}.cih"
 
         self.fEch = 5e5  # Fréquence d'echantillonage de la carte d'acquisition
-        self.vidLength = 1000  # "Random" vidLength before loading the video
+        self.nFrames = 1000  # "Random" number of frames before loading the video
 
         # Position des capteurs et du point d'impact
         self.impact = [155e-3, 45e-3, 290e-3]  # Coordonnées x, y, z de l'impact
@@ -48,7 +48,7 @@ class GUI(QDialog):
         self.filename = QLineEdit("mes_cam_bille1_2")
         self.load = QPushButton("Charger")
         self.load.clicked.connect(self.loadFiles)
-        self.WindowSize = QLineEdit("30e-3")
+        self.WindowSize = QLineEdit("1e-3")
 
         # Création des objets figure
 
@@ -73,7 +73,7 @@ class GUI(QDialog):
         # Crétion du slider
         # self.toolbarSpec = NavigationToolbar(self.canvasSpec, self)
         self.Slider = QSlider(Qt.Horizontal)
-        self.Slider.setMinimum(0)
+        self.Slider.setMinimum(1)
         self.Slider.setMaximum(100)
         self.Slider.setTickInterval(1)
         self.Slider.setValue(0)
@@ -99,21 +99,11 @@ class GUI(QDialog):
         MainLayout.addWidget(self.Slider)
         self.setLayout(MainLayout)
 
-    def changeSliderMax(self):
-        """Change slider maximum position for slider/vid sync once video loaded"""
-        filename = self.filename.text()
-        with open(self.pathCih.format(filename)) as file:
-            lines = file.readlines()
-            for line in lines:
-                if line.startswith('Total Frame :'):
-                    self.vidLength = int(line.split(' : ')[1])
-        self.Slider.setMaximum(self.vidLength)
-
     def loadFiles(self):
         """Load file function."""
         filename = self.filename.text()  # Récupération du filename dans la barre de texte
         self.cvVideo = cv2.VideoCapture(self.pathVid.format(filename))  # Chargement video
-        self.changeSliderMax()
+        self.data = np.loadtxt(self.pathTxt.format(filename))
 
         # Recherche de FPS et startFrame pour calcul ultérieur des echantillons temporels
         with open(self.pathCih.format(filename)) as file:
@@ -123,41 +113,54 @@ class GUI(QDialog):
                     self.fps = int(line.split(' : ')[1])
                 if line.startswith('Start Frame :'):
                     self.startFrame = int(line.split(' : ')[1])
+                if line.startswith('Total Frame :'):
+                    self.nFrames = int(line.split(' : ')[1])
 
-        self.data = np.loadtxt(self.pathTxt.format(filename))
+        # Calcul des temps auxquels la video commence et se termine dans la mesure
+        self.vidStart = self.startFrame / self.fps
+        self.vidEnd = (self.startFrame + self.nFrames) / self.fps
+
+        print('Start frame : {}, End frame : {}, nFrames : {}'.format(self.startFrame, (self.startFrame + self.nFrames), self.nFrames))
+        print('Start time : {}, End time : {}, vidLength : {}'.format(self.vidStart, self.vidEnd, self.nFrames / self.fps))
+
+        self.Slider.setMaximum(self.nFrames)
         self.plot()
 
     def sliderUpdate(self):
         """Update the bottom screen slider. Useful for updating datas."""
-        # print(str(self.Slider.value()))
+        print('SliderVal : {}'.format(str(self.Slider.value())))
         self.plot(pos=self.Slider.value())
 
     def plot(self, pos=0):
         """Plot a video frame, temporal signals and spectorgam on the GUI."""
-        MidFen = pos / self.vidLength
-
-        # Calcul des temps auxquels la video commence et se termine dans la mesure
-        vidStart = self.startFrame / self.fps
-        vidEnd = (self.startFrame + self.vidLength) / self.fps
-
         # Echantillons de signal correspondant à ces temps
-        startEch = int(self.fEch * vidStart)
-        endEch = int(self.fEch * vidEnd)
+        startEch = int(self.fEch * self.vidStart)
+        endEch = int(self.fEch * self.vidEnd)
 
         time = self.data[startEch:endEch + 1, 0]  # Slice des valeurs de signal correspondant à la vidéo
         micro = self.data[startEch:endEch + 1, 1]  # endEch + 1 car le dernier élément n'est pas compris dans le slice
         hydro = self.data[startEch:endEch + 1, 2]
+        print('Measure start : {}, Measure end : {}'.format(time[0], time[-1]))
+        # Extraction d'une certaine frame de la vidéo
+        self.cvVideo.set(cv2.CAP_PROP_POS_FRAMES, self.Slider.value())
+        print('Current frame : {}'.format(self.cvVideo.get(cv2.CAP_PROP_POS_FRAMES)))
+        ret, self.frame = self.cvVideo.read()
+        currentTime = (self.cvVideo.get(cv2.CAP_PROP_POS_FRAMES) + self.startFrame) / self.fps
+        print('Current time : {}'.format(currentTime))
 
-        print('Vid start : {}, vid end : {}'.format(vidStart, vidEnd))
-        print('startEch : {}, endEch : {}'.format(startEch, endEch))
-        print('Acquis start : {}, acquis end {}'.format(time[0], time[-1]))
+        ax = self.figVid.add_subplot(111)
+        ax.imshow(self.frame)
+        ax.set_xticks([])
+        ax.set_yticks([])
+        self.canvasVid.draw()
 
         # Allure générale des signaux
         self.figSign.clear()
         ax = self.figSign.add_subplot(111)
         ax.plot(time, hydro)
-        ax.axvline(MidFen - float(self.WindowSize.text()), color='r')
-        ax.axvline(MidFen + float(self.WindowSize.text()), color='r')
+        ax.set_xlim(time[0], time[-1])
+        ax.axvline(currentTime - float(self.WindowSize.text()), color='r')
+        ax.axvline(currentTime + float(self.WindowSize.text()), color='r')
         ax.set_xticks([])
         ax.set_yticks([])
         # ax.fill_between()
@@ -167,8 +170,8 @@ class GUI(QDialog):
         self.figMicro.clear()
         ax = self.figMicro.add_subplot(111)
         ax.plot(time, micro)
-        ax.set_xlim(MidFen - float(self.WindowSize.text()), MidFen + float(self.WindowSize.text()))
-        ax.axvline(MidFen, color='r')
+        ax.set_xlim(currentTime - float(self.WindowSize.text()), currentTime + float(self.WindowSize.text()))
+        ax.axvline(currentTime, color='r')
         ax.set_title("Micro")
         self.canvasMicro.draw()
 
@@ -176,8 +179,8 @@ class GUI(QDialog):
         self.figTemp.clear()
         ax = self.figTemp.add_subplot(111)
         ax.plot(time, hydro)
-        ax.set_xlim(MidFen - float(self.WindowSize.text()), MidFen + float(self.WindowSize.text()))
-        ax.axvline(MidFen, color='r')
+        ax.set_xlim(currentTime - float(self.WindowSize.text()), currentTime + float(self.WindowSize.text()))
+        ax.axvline(currentTime, color='r')
         ax.set_title("Hydrophone temporel")
         self.canvasTemp.draw()
 
@@ -187,22 +190,12 @@ class GUI(QDialog):
         fs = len(time) / max(time)
         f, t, spectrogram = sig.spectrogram(hydro, fs)
         ax.pcolormesh(t, f, spectrogram, cmap='Greens')
-        ax.set_xlim(MidFen - float(self.WindowSize.text()), MidFen + float(self.WindowSize.text()))
-        ax.axvline(MidFen, color='r')
+        ax.set_xlim(currentTime - float(self.WindowSize.text()), currentTime + float(self.WindowSize.text()))
+        ax.axvline(currentTime, color='r')
         ax.set_title("Hydrophone spectrogramme")
         ax.set_ylim(0, 30e3)
         self.canvasSpec.draw()
         self.figVid.clear()
-
-        # Extraction d'une certaine frame de la vidéo
-        self.cvVideo.set(cv2.CAP_PROP_POS_FRAMES, self.Slider.value())
-        ret, self.frame = self.cvVideo.read()
-
-        ax = self.figVid.add_subplot(111)
-        ax.imshow(self.frame)
-        ax.set_xticks([])
-        ax.set_yticks([])
-        self.canvasVid.draw()
 
     def flightTime(self):
         """Calculate wave flight time in water and air for sync."""
