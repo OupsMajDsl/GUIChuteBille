@@ -27,24 +27,25 @@ class GUI(QDialog):
         # self.pathTxt = "/media/mathieu/Nouveau nom/mesures_acous/{}.txt"
         # self.pathCih = "/media/mathieu/Nouveau nom/videos_bille/{}.cih"
 
-        self.pathVid = "/home/fabouzz/Vidéos/{}.avi"
-        self.pathTxt = "/home/fabouzz/Vidéos/mesures_acous/{}.txt"
-        self.pathCih = "/home/fabouzz/Vidéos/{}.cih"
+        self.pathVid = "/home/fabouzz/Vidéos/mesuresBille/{}.avi"
+        self.pathTxt = "/home/fabouzz/Vidéos/mesuresBille/denoised_mesures_acous/denoised_{}.txt"
+        self.pathCih = "/home/fabouzz/Vidéos/mesuresBille/{}.cih"
 
-        self.vidLength = 1000
+        self.fEch = 5e5  # Fréquence d'echantillonage de la carte d'acquisition
+        self.vidLength = 1000  # "Random" vidLength before loading the video
 
-        # Position des capteurs
+        # Position des capteurs et du point d'impact
         self.impact = [155e-3, 45e-3, 290e-3]  # Coordonnées x, y, z de l'impact
         self.micro = [200e-3, 50e-3, 330e-3]
         self.hydro = [100e-3, 80e-3, 270e-3]
 
         # Fonction à appeler dans l'initialisation
-        self.Objets()
+        self.objets()
         self.display()
 
-    def Objets(self):
+    def objets(self):
         """Define visual objets to place in GUI."""
-        self.filename = QLineEdit("mes_haut3_bille2_1")
+        self.filename = QLineEdit("mes_cam_bille1_2")
         self.load = QPushButton("Charger")
         self.load.clicked.connect(self.loadFiles)
         self.WindowSize = QLineEdit("30e-3")
@@ -76,10 +77,10 @@ class GUI(QDialog):
         self.Slider.setMaximum(100)
         self.Slider.setTickInterval(1)
         self.Slider.setValue(0)
-        self.Slider.valueChanged.connect(self.SliderUpdate)
+        self.Slider.valueChanged.connect(self.sliderUpdate)
 
     def display(self):
-        """GUI layout using previous Objets."""
+        """GUI layout using previous objets."""
         MainLayout = QVBoxLayout()
         grid = QGridLayout()
         grid.addWidget(self.canvasVid, 0, 0)
@@ -110,20 +111,23 @@ class GUI(QDialog):
 
     def loadFiles(self):
         """Load file function."""
-        filename = self.filename.text()
-        self.cvVideo = cv2.VideoCapture(self.pathVid.format(filename))
-        self.data = np.loadtxt(self.pathTxt.format(filename))
-        self.plot()
+        filename = self.filename.text()  # Récupération du filename dans la barre de texte
+        self.cvVideo = cv2.VideoCapture(self.pathVid.format(filename))  # Chargement video
         self.changeSliderMax()
+
+        # Recherche de FPS et startFrame pour calcul ultérieur des echantillons temporels
         with open(self.pathCih.format(filename)) as file:
             lines = file.readlines()
             for line in lines:
                 if line.startswith('Record Rate(fps) :'):
-                    fps = int(line.split(' : ')[1])
+                    self.fps = int(line.split(' : ')[1])
                 if line.startswith('Start Frame :'):
                     self.startFrame = int(line.split(' : ')[1])
 
-    def SliderUpdate(self):
+        self.data = np.loadtxt(self.pathTxt.format(filename))
+        self.plot()
+
+    def sliderUpdate(self):
         """Update the bottom screen slider. Useful for updating datas."""
         # print(str(self.Slider.value()))
         self.plot(pos=self.Slider.value())
@@ -131,9 +135,22 @@ class GUI(QDialog):
     def plot(self, pos=0):
         """Plot a video frame, temporal signals and spectorgam on the GUI."""
         MidFen = pos / self.vidLength
-        time = self.data[:, 0]
-        micro = self.data[:, 1]
-        hydro = self.data[:, 2]
+
+        # Calcul des temps auxquels la video commence et se termine dans la mesure
+        vidStart = self.startFrame / self.fps
+        vidEnd = (self.startFrame + self.vidLength) / self.fps
+
+        # Echantillons de signal correspondant à ces temps
+        startEch = int(self.fEch * vidStart)
+        endEch = int(self.fEch * vidEnd)
+
+        time = self.data[startEch:endEch + 1, 0]  # Slice des valeurs de signal correspondant à la vidéo
+        micro = self.data[startEch:endEch + 1, 1]  # endEch + 1 car le dernier élément n'est pas compris dans le slice
+        hydro = self.data[startEch:endEch + 1, 2]
+
+        print('Vid start : {}, vid end : {}'.format(vidStart, vidEnd))
+        print('startEch : {}, endEch : {}'.format(startEch, endEch))
+        print('Acquis start : {}, acquis end {}'.format(time[0], time[-1]))
 
         # Allure générale des signaux
         self.figSign.clear()
@@ -187,19 +204,22 @@ class GUI(QDialog):
         ax.set_yticks([])
         self.canvasVid.draw()
 
-    def tdv(self):
+    def flightTime(self):
         """Calculate wave flight time in water and air for sync."""
-        c_air = 343
-        c_eau = 1500
+        c_air = 343  # Sound speed in air
+        c_eau = 1500  # Sound speed in water
 
+        # Distance between impact zone and microphone
         d_micro = np.sqrt((self.micro[0] - self.impact[0])**2 +
                           (self.micro[1] - self.impact[1])**2 +
                           (self.micro[2] - self.impact[2])**2)
 
+        # Distance between impact zone and microphone
         d_hydro = np.sqrt((self.hydro[0] - self.impact[0])**2 +
                           (self.hydro[1] - self.impact[1])**2 +
                           (self.hydro[2] - self.impact[2])**2)
 
+        # Wave flight time between impact/mic and impact/hydrohpone
         tdv_micro = d_micro / c_air
         tdv_hydro = d_hydro / c_eau
 
@@ -208,4 +228,4 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
     clock = GUI()
     clock.show()
-sys.exit(app.exec_())
+    sys.exit(app.exec_())
