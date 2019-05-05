@@ -48,7 +48,7 @@ class GUI(QDialog):
         self.filename = QLineEdit("mes_cam_bille1_2")
         self.load = QPushButton("Charger")
         self.load.clicked.connect(self.loadFiles)
-        self.WindowSize = QLineEdit("1e-3")
+        self.WindowSize = QLineEdit("5e-4")
 
         # Création des objets figure
 
@@ -131,8 +131,28 @@ class GUI(QDialog):
         print('SliderVal : {}'.format(str(self.Slider.value())))
         self.plot(pos=self.Slider.value())
 
+    def flightTime(self):
+        """Calculate wave flight time in water and air for sync."""
+        c_air = 343  # Sound speed in air
+        c_eau = 1500  # Sound speed in water
+
+        # Distance between impact zone and microphone
+        d_micro = np.sqrt((self.micro[0] - self.impact[0])**2 +
+                          (self.micro[1] - self.impact[1])**2 +
+                          (self.micro[2] - self.impact[2])**2)
+
+        # Distance between impact zone and microphone
+        d_hydro = np.sqrt((self.hydro[0] - self.impact[0])**2 +
+                          (self.hydro[1] - self.impact[1])**2 +
+                          (self.hydro[2] - self.impact[2])**2)
+
+        # Wave flight time between impact/mic and impact/hydrohpone
+        self.tdv_micro = d_micro / c_air
+        self.tdv_hydro = d_hydro / c_eau
+
     def plot(self, pos=0):
         """Plot a video frame, temporal signals and spectorgam on the GUI."""
+        self.flightTime()
         # Echantillons de signal correspondant à ces temps
         startEch = int(self.fEch * self.vidStart)
         endEch = int(self.fEch * self.vidEnd)
@@ -140,6 +160,8 @@ class GUI(QDialog):
         time = self.data[startEch:endEch + 1, 0]  # Slice des valeurs de signal correspondant à la vidéo
         micro = self.data[startEch:endEch + 1, 1]  # endEch + 1 car le dernier élément n'est pas compris dans le slice
         hydro = self.data[startEch:endEch + 1, 2]
+        hydspec = self.data[:, 2]
+        timeh = self.data[:, 0]
         print('Measure start : {}, Measure end : {}'.format(time[0], time[-1]))
         # Extraction d'une certaine frame de la vidéo
         self.cvVideo.set(cv2.CAP_PROP_POS_FRAMES, self.Slider.value())
@@ -187,34 +209,14 @@ class GUI(QDialog):
         # Tracé du spectrogramme
         self.figSpec.clear()
         ax = self.figSpec.add_subplot(111)
-        fs = len(time) / max(time)
-        f, t, spectrogram = sig.spectrogram(hydro, fs)
+        f, t, spectrogram = sig.spectrogram(hydspec, self.fEch)
         ax.pcolormesh(t, f, spectrogram, cmap='Greens')
-        ax.set_xlim(currentTime - float(self.WindowSize.text()), currentTime + float(self.WindowSize.text()))
+        # ax.set_xlim(currentTime - float(self.WindowSize.text()), currentTime + float(self.WindowSize.text()))
         ax.axvline(currentTime, color='r')
         ax.set_title("Hydrophone spectrogramme")
-        ax.set_ylim(0, 30e3)
+        ax.set_ylim(0, 50e3)
         self.canvasSpec.draw()
         self.figVid.clear()
-
-    def flightTime(self):
-        """Calculate wave flight time in water and air for sync."""
-        c_air = 343  # Sound speed in air
-        c_eau = 1500  # Sound speed in water
-
-        # Distance between impact zone and microphone
-        d_micro = np.sqrt((self.micro[0] - self.impact[0])**2 +
-                          (self.micro[1] - self.impact[1])**2 +
-                          (self.micro[2] - self.impact[2])**2)
-
-        # Distance between impact zone and microphone
-        d_hydro = np.sqrt((self.hydro[0] - self.impact[0])**2 +
-                          (self.hydro[1] - self.impact[1])**2 +
-                          (self.hydro[2] - self.impact[2])**2)
-
-        # Wave flight time between impact/mic and impact/hydrohpone
-        tdv_micro = d_micro / c_air
-        tdv_hydro = d_hydro / c_eau
 
 
 if __name__ == '__main__':
