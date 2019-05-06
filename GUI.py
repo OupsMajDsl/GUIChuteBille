@@ -32,7 +32,7 @@ class GUI(QDialog):
         # Chemin des différents fichiers à charger
         if self.user == 'mathieu':
             self.pathVid = "/media/mathieu/Nouveau nom/videos_bille/{}.avi"
-            self.pathTxt = "/media/mathieu/Nouveau nom/denoised_mesures_acous/denoised_{}.txt"
+            self.pathTxt = "/media/mathieu/Nouveau nom/mesures_acous/{}.txt"
             self.pathCih = "/media/mathieu/Nouveau nom/videos_bille/{}.cih"
 
         elif self.user == 'fabien':
@@ -54,7 +54,7 @@ class GUI(QDialog):
 
     def objets(self):
         """Define visual objets to place in GUI."""
-        self.filename = QLineEdit("mes_cam_bille1_2")
+        self.filename = QLineEdit("mes_sh_b3_1")
         self.load = QPushButton("Charger")
         self.load.clicked.connect(self.loadFiles)
         self.WindowSize = QLineEdit("5e-4")
@@ -141,6 +141,11 @@ class GUI(QDialog):
         f, t, spectrogram = sig.spectrogram(self.data[:, 2], self.fEch)
         return f, t, spectrogram
 
+    def find_nearest(self, array, value):
+        array = np.asarray(array)
+        idx = (np.abs(array - value)).argmin()
+        return idx
+
     def keyPressEvent(self, event):
         """Keyboard navigation."""
         if event.key() == Qt.Key_Right:
@@ -186,17 +191,22 @@ class GUI(QDialog):
         endEch = int(self.fEch * self.vidEnd)
 
         # Grandeurs contenues dans le fichier texte
-        time = self.data[startEch:endEch + 1, 0]  # Slice des valeurs de signal correspondant à la vidéo
+        time = np.asarray(self.data[startEch:endEch + 1, 0])  # Slice des valeurs de signal correspondant à la vidéo
         micro = self.data[startEch:endEch + 1, 1]  # endEch + 1 car le dernier élément n'est pas compris dans le slice
         hydro = self.data[startEch:endEch + 1, 2]
-        # print('Measure start : {}, Measure end : {}'.format(time[0], time[-1]))
+
+        # Ajustement pour que le temps commence au 0 correspondant à la vidéo
+        time = time - time[0]
+
         # Extraction d'une certaine frame de la vidéo
         self.cvVideo.set(cv2.CAP_PROP_POS_FRAMES, self.Slider.value())
-        # print('Current frame : {}'.format(self.cvVideo.get(cv2.CAP_PROP_POS_FRAMES)))
+        # lecture de la frame extraite
         ret, self.frame = self.cvVideo.read()
-        currentTime = (self.cvVideo.get(cv2.CAP_PROP_POS_FRAMES) + self.startFrame) / self.fps
-        # print('Current time : {}'.format(currentTime))
-
+        # temps correspondant à la frame
+        currentTime = (self.cvVideo.get(cv2.CAP_PROP_POS_FRAMES)) / self.fps
+         # + self.startFrame
+        # Tracé de la frame de la vidéo
+        self.figVid.clear()
         ax = self.figVid.add_subplot(111)
         ax.imshow(self.frame)
         ax.set_xticks([])
@@ -207,6 +217,7 @@ class GUI(QDialog):
         self.figSign.clear()
         ax = self.figSign.add_subplot(111)
         ax.plot(time, hydro)
+        ax.plot(time, micro, alpha=.5)
         ax.set_xlim(time[0], time[-1])
         ax.axvline(currentTime + self.tdv_hydro - float(self.WindowSize.text()), color='r')
         ax.axvline(currentTime + self.tdv_hydro + float(self.WindowSize.text()), color='r')
@@ -215,25 +226,39 @@ class GUI(QDialog):
         # ax.fill_between()
         self.canvasSign.draw()
 
+        # Redéfinition des vecteurs micro et hydro
+        micro_min = self.find_nearest(time, 
+                currentTime + self.tdv_micro - float(self.WindowSize.text()))
+        micro_max = self.find_nearest(time, 
+                currentTime + self.tdv_micro + float(self.WindowSize.text()))
+
+        hydro_min = self.find_nearest(time, 
+                currentTime + self.tdv_hydro - float(self.WindowSize.text()))
+        hydro_max = self.find_nearest(time, 
+                currentTime + self.tdv_hydro + float(self.WindowSize.text()))
+
         # Tracé temporel du microphone
         self.figMicro.clear()
         ax = self.figMicro.add_subplot(111)
-        ax.plot(time, micro)
+        ax.plot(time[micro_min: micro_max], micro[micro_min: micro_max])
         ax.set_xlim(currentTime + self.tdv_micro - float(self.WindowSize.text()),
-                    currentTime + self.tdv_micro + float(self.WindowSize.text()))
+                currentTime + self.tdv_micro + float(self.WindowSize.text()))
         ax.axvline(currentTime + self.tdv_micro, color='r')
         ax.set_title("Micro")
+        ax.set_xlabel("Temps [s]")
+        ax.set_ylabel("Pression [Pa]")
         self.canvasMicro.draw()
 
         # Tracé temporel de l'hydrophone
         self.figTemp.clear()
         ax = self.figTemp.add_subplot(111)
-        ax.plot(time, hydro)
+        ax.plot(time[hydro_min: hydro_max], hydro[hydro_min: hydro_max])
         ax.set_xlim(currentTime + self.tdv_hydro - float(self.WindowSize.text()),
                     currentTime + self.tdv_hydro + float(self.WindowSize.text()))
         ax.axvline(currentTime + self.tdv_hydro, color='r')
         ax.set_title("Hydrophone temporel")
-        ax.autoscale(enable=True, axis='y', tight=False)
+        ax.set_xlabel("Temps [s]")
+        ax.set_ylabel("Pression [Pa]")
         self.canvasTemp.draw()
 
         # Tracé du spectrogramme
@@ -241,14 +266,13 @@ class GUI(QDialog):
         ax = self.figSpec.add_subplot(111)
         f, t, spectrogram = self.spectrogram()
         ax.pcolormesh(t, f, spectrogram, cmap='Greens')
-        # ax.set_xlim(currentTime - float(self.WindowSize.text()), currentTime + float(self.WindowSize.text()))
         ax.axvline(currentTime, color='r')
         ax.set_title("Hydrophone spectrogramme")
         ax.set_ylim(0, 30e3)
+        ax.set_xlabel("Temps [s]")
+        ax.set_ylabel("Fréquence [Hz]")
         ax.set_xlim(currentTime + self.tdv_hydro - float(self.WindowSize.text()), currentTime + self.tdv_hydro + float(self.WindowSize.text()))
         self.canvasSpec.draw()
-        self.figVid.clear()
-
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
