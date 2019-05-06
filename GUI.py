@@ -21,18 +21,20 @@ class GUI(QDialog):
         """GUI definition."""
         super(GUI, self).__init__()
         self.setWindowTitle("Synchronisation Audio/vidéo pour la chute de billes")
+        self.setWindowIcon(QIcon("icon.jpeg"))
+        self.setGeometry(200, 200, 500, 400)
 
         # Chemin des différents fichiers à charger
-        # self.pathVid = "/media/mathieu/Nouveau nom/videos_bille/{}.avi"
-        # self.pathTxt = "/media/mathieu/Nouveau nom/mesures_acous/{}.txt"
-        # self.pathCih = "/media/mathieu/Nouveau nom/videos_bille/{}.cih"
+        self.pathVid = "/media/mathieu/Nouveau nom/videos_bille/{}.avi"
+        self.pathTxt = "/media/mathieu/Nouveau nom/denoised_mesures_acous/denoised_{}.txt"
+        self.pathCih = "/media/mathieu/Nouveau nom/videos_bille/{}.cih"
 
-        self.pathVid = "/home/fabouzz/Vidéos/mesuresBille/{}.avi"
-        self.pathTxt = "/home/fabouzz/Vidéos/mesuresBille/denoised_mesures_acous/denoised_{}.txt"
-        self.pathCih = "/home/fabouzz/Vidéos/mesuresBille/{}.cih"
+        # self.pathVid = "/home/fabouzz/Vidéos/mesuresBille/{}.avi"
+        # self.pathTxt = "/home/fabouzz/Vidéos/mesuresBille/denoised_mesures_acous/denoised_{}.txt"
+        # self.pathCih = "/home/fabouzz/Vidéos/mesuresBille/{}.cih"
 
         self.fEch = 5e5  # Fréquence d'echantillonage de la carte d'acquisition
-        self.nFrames = 1000  # "Random" number of frames before loading the video
+        self.nFrames = 0  # Initialisation: number of frames before loading the video
 
         # Position des capteurs et du point d'impact
         self.impact = [155e-3, 45e-3, 290e-3]  # Coordonnées x, y, z de l'impact
@@ -45,13 +47,13 @@ class GUI(QDialog):
 
     def objets(self):
         """Define visual objets to place in GUI."""
-        self.filename = QLineEdit("mes_cam_bille1_2")
+        self.filename = QLineEdit("mes_cam_bille3_1")
         self.load = QPushButton("Charger")
         self.load.clicked.connect(self.loadFiles)
         self.WindowSize = QLineEdit("5e-4")
+        self.WindowSize.setMaximumWidth(100)
 
         # Création des objets figure
-
         # Spectrogramme de l'hydrophone
         self.figSpec = Figure(figsize=(8, 4), dpi=100, tight_layout=True)
         # Allure temporelle de l'hydrohpone
@@ -126,6 +128,18 @@ class GUI(QDialog):
         self.Slider.setMaximum(self.nFrames)
         self.plot()
 
+    def spectrogram(self):
+        f, t, spectrogram = sig.spectrogram(self.data[:, 2], self.fEch)
+        return f, t, spectrogram
+
+    def keyPressEvent(self, event):
+            if event.key()==Qt.Key_Right:
+                self.slider.setValue(self.slider.value() + 1)
+            elif event.key()==Qt.Key_Left:
+                self.slider.setValue(self.slider.value() - 1)
+            else:
+                self.keyPressEvent(self, event)
+
     def sliderUpdate(self):
         """Update the bottom screen slider. Useful for updating datas."""
         # print('SliderVal : {}'.format(str(self.Slider.value())))
@@ -190,7 +204,8 @@ class GUI(QDialog):
         self.figMicro.clear()
         ax = self.figMicro.add_subplot(111)
         ax.plot(time, micro)
-        ax.set_xlim(currentTime + self.tdv_micro - float(self.WindowSize.text()), currentTime + self.tdv_micro + float(self.WindowSize.text()))
+        ax.set_xlim(currentTime + self.tdv_micro - float(self.WindowSize.text()), 
+                    currentTime + self.tdv_micro + float(self.WindowSize.text()))
         ax.axvline(currentTime + self.tdv_micro, color='r')
         ax.set_title("Micro")
         self.canvasMicro.draw()
@@ -199,7 +214,8 @@ class GUI(QDialog):
         self.figTemp.clear()
         ax = self.figTemp.add_subplot(111)
         ax.plot(time, hydro)
-        ax.set_xlim(currentTime + self.tdv_hydro - float(self.WindowSize.text()), currentTime + self.tdv_hydro + float(self.WindowSize.text()))
+        ax.set_xlim(currentTime + self.tdv_hydro - float(self.WindowSize.text()), 
+                    currentTime + self.tdv_hydro + float(self.WindowSize.text()))
         ax.axvline(currentTime + self.tdv_hydro, color='r')
         ax.set_title("Hydrophone temporel")
         ax.autoscale(enable=True, axis='y', tight=False)
@@ -208,12 +224,13 @@ class GUI(QDialog):
         # Tracé du spectrogramme
         self.figSpec.clear()
         ax = self.figSpec.add_subplot(111)
-        f, t, spectrogram = sig.spectrogram(hydro, self.fEch)
+        f, t, spectrogram = self.spectrogram()
         ax.pcolormesh(t, f, spectrogram, cmap='Greens')
         # ax.set_xlim(currentTime - float(self.WindowSize.text()), currentTime + float(self.WindowSize.text()))
         ax.axvline(currentTime, color='r')
         ax.set_title("Hydrophone spectrogramme")
-        ax.set_ylim(0, 50e3)
+        ax.set_ylim(0, 30e3)
+        ax.set_xlim(currentTime + self.tdv_hydro - float(self.WindowSize.text()), currentTime + self.tdv_hydro + float(self.WindowSize.text()))
         self.canvasSpec.draw()
         self.figVid.clear()
 
@@ -222,4 +239,4 @@ if __name__ == '__main__':
     app = QApplication(sys.argv)
     clock = GUI()
     clock.show()
-    sys.exit(app.exec_())
+sys.exit(app.exec_())
