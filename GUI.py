@@ -25,13 +25,13 @@ class GUI(QDialog):
         self.setGeometry(200, 200, 500, 400)
 
         # Chemin des différents fichiers à charger
-        self.pathVid = "/media/mathieu/Nouveau nom/videos_bille/{}.avi"
-        self.pathTxt = "/media/mathieu/Nouveau nom/denoised_mesures_acous/denoised_{}.txt"
-        self.pathCih = "/media/mathieu/Nouveau nom/videos_bille/{}.cih"
+        # self.pathVid = "/media/mathieu/Nouveau nom/videos_bille/{}.avi"
+        # self.pathTxt = "/media/mathieu/Nouveau nom/denoised_mesures_acous/denoised_{}.txt"
+        # self.pathCih = "/media/mathieu/Nouveau nom/videos_bille/{}.cih"
 
-        # self.pathVid = "/home/fabouzz/Vidéos/mesuresBille/{}.avi"
-        # self.pathTxt = "/home/fabouzz/Vidéos/mesuresBille/denoised_mesures_acous/denoised_{}.txt"
-        # self.pathCih = "/home/fabouzz/Vidéos/mesuresBille/{}.cih"
+        self.pathVid = "/home/fabouzz/Vidéos/mesuresBille/{}.avi"
+        self.pathTxt = "/home/fabouzz/Vidéos/mesuresBille/denoised_mesures_acous/denoised_{}.txt"
+        self.pathCih = "/home/fabouzz/Vidéos/mesuresBille/{}.cih"
 
         self.fEch = 5e5  # Fréquence d'echantillonage de la carte d'acquisition
         self.nFrames = 0  # Initialisation: number of frames before loading the video
@@ -129,19 +129,21 @@ class GUI(QDialog):
         self.plot()
 
     def spectrogram(self):
+        """Spectrogram creation."""
         f, t, spectrogram = sig.spectrogram(self.data[:, 2], self.fEch)
         return f, t, spectrogram
 
     def keyPressEvent(self, event):
-            if event.key()==Qt.Key_Right:
-                self.slider.setValue(self.slider.value() + 1)
-            elif event.key()==Qt.Key_Left:
-                self.slider.setValue(self.slider.value() - 1)
-            else:
-                try:
-                    self.keyPressEvent(self, event)
-                except TypeError:
-                    pass
+        """Keyboard navigation."""
+        if event.key() == Qt.Key_Right:
+            self.slider.setValue(self.slider.value() + 1)
+        elif event.key() == Qt.Key_Left:
+            self.slider.setValue(self.slider.value() - 1)
+        else:
+            try:
+                self.keyPressEvent(self, event)
+            except TypeError:
+                pass
 
     def sliderUpdate(self):
         """Update the bottom screen slider. Useful for updating datas."""
@@ -207,7 +209,7 @@ class GUI(QDialog):
         self.figMicro.clear()
         ax = self.figMicro.add_subplot(111)
         ax.plot(time, micro)
-        ax.set_xlim(currentTime + self.tdv_micro - float(self.WindowSize.text()), 
+        ax.set_xlim(currentTime + self.tdv_micro - float(self.WindowSize.text()),
                     currentTime + self.tdv_micro + float(self.WindowSize.text()))
         ax.axvline(currentTime + self.tdv_micro, color='r')
         ax.set_title("Micro")
@@ -217,7 +219,7 @@ class GUI(QDialog):
         self.figTemp.clear()
         ax = self.figTemp.add_subplot(111)
         ax.plot(time, hydro)
-        ax.set_xlim(currentTime + self.tdv_hydro - float(self.WindowSize.text()), 
+        ax.set_xlim(currentTime + self.tdv_hydro - float(self.WindowSize.text()),
                     currentTime + self.tdv_hydro + float(self.WindowSize.text()))
         ax.axvline(currentTime + self.tdv_hydro, color='r')
         ax.set_title("Hydrophone temporel")
