@@ -47,7 +47,7 @@ class GUI(QDialog):
 
     def objets(self):
         """Define visual objets to place in GUI."""
-        self.filename = QLineEdit("mes_cam_bille3_1")
+        self.filename = QLineEdit("mes_cam_bille1_2")
         self.load = QPushButton("Charger")
         self.load.clicked.connect(self.loadFiles)
         self.WindowSize = QLineEdit("5e-4")
@@ -138,7 +138,10 @@ class GUI(QDialog):
             elif event.key()==Qt.Key_Left:
                 self.slider.setValue(self.slider.value() - 1)
             else:
-                self.keyPressEvent(self, event)
+                try:
+                    self.keyPressEvent(self, event)
+                except TypeError:
+                    pass
 
     def sliderUpdate(self):
         """Update the bottom screen slider. Useful for updating datas."""
