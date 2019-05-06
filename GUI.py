@@ -226,7 +226,8 @@ class GUI(QDialog):
         # ax.fill_between()
         self.canvasSign.draw()
 
-        # Redéfinition des vecteurs micro et hydro
+        # Redéfinition des vecteurs micro et hydro pour tracer seulement une portion de signal
+        # 
         micro_min = self.find_nearest(time, 
                 currentTime + self.tdv_micro - float(self.WindowSize.text()))
         micro_max = self.find_nearest(time, 
