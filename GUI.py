@@ -1,4 +1,8 @@
-"""Routine permettant de synchroniser un fichier vidéo avec les signaux temporels afin de faciliter l'analyse de ces derniers."""
+
+"""
+Routine permettant de synchroniser un fichier vidéo avec les signaux temporels afin de faciliter l'analyse de ces derniers.
+"""
+
 import sys
 import cv2
 import numpy as np
@@ -24,14 +28,17 @@ class GUI(QDialog):
         self.setWindowIcon(QIcon("icon.jpeg"))
         self.setGeometry(200, 200, 500, 400)
 
+        self.user = "mathieu"
         # Chemin des différents fichiers à charger
-        # self.pathVid = "/media/mathieu/Nouveau nom/videos_bille/{}.avi"
-        # self.pathTxt = "/media/mathieu/Nouveau nom/denoised_mesures_acous/denoised_{}.txt"
-        # self.pathCih = "/media/mathieu/Nouveau nom/videos_bille/{}.cih"
+        if self.user == 'mathieu':
+            self.pathVid = "/media/mathieu/Nouveau nom/videos_bille/{}.avi"
+            self.pathTxt = "/media/mathieu/Nouveau nom/denoised_mesures_acous/denoised_{}.txt"
+            self.pathCih = "/media/mathieu/Nouveau nom/videos_bille/{}.cih"
 
-        self.pathVid = "/home/fabouzz/Vidéos/mesuresBille/{}.avi"
-        self.pathTxt = "/home/fabouzz/Vidéos/mesuresBille/denoised_mesures_acous/denoised_{}.txt"
-        self.pathCih = "/home/fabouzz/Vidéos/mesuresBille/{}.cih"
+        elif self.user == 'fabien':
+            self.pathVid = "/home/fabouzz/Vidéos/mesuresBille/{}.avi"
+            self.pathTxt = "/home/fabouzz/Vidéos/mesuresBille/denoised_mesures_acous/denoised_{}.txt"
+            self.pathCih = "/home/fabouzz/Vidéos/mesuresBille/{}.cih"
 
         self.fEch = 5e5  # Fréquence d'echantillonage de la carte d'acquisition
         self.nFrames = 0  # Initialisation: number of frames before loading the video
@@ -105,9 +112,10 @@ class GUI(QDialog):
         """Load file function."""
         filename = self.filename.text()  # Récupération du filename dans la barre de texte
         self.cvVideo = cv2.VideoCapture(self.pathVid.format(filename))  # Chargement video
-        self.data = np.loadtxt(self.pathTxt.format(filename))
+        self.data = np.loadtxt(self.pathTxt.format(filename))    # Chargement du fichier texte associé
 
         # Recherche de FPS et startFrame pour calcul ultérieur des echantillons temporels
+        # dans le fichier de configuration des acquisitions vidéo
         with open(self.pathCih.format(filename)) as file:
             lines = file.readlines()
             for line in lines:
@@ -122,14 +130,14 @@ class GUI(QDialog):
         self.vidStart = self.startFrame / self.fps
         self.vidEnd = (self.startFrame + self.nFrames) / self.fps
 
-        # print('Start frame : {}, End frame : {}, nFrames : {}'.format(self.startFrame, (self.startFrame + self.nFrames), self.nFrames))
-        # print('Start time : {}, End time : {}, vidLength : {}'.format(self.vidStart, self.vidEnd, self.nFrames / self.fps))
-
+        # Ajustement du slider à la vidéo: il glisse de la première 
+        # à la dernière frame de la vidéo
         self.Slider.setMaximum(self.nFrames)
         self.plot()
 
     def spectrogram(self):
         """Spectrogram creation."""
+        # A ajuster, ne marche pas
         f, t, spectrogram = sig.spectrogram(self.data[:, 2], self.fEch)
         return f, t, spectrogram
 
@@ -140,6 +148,7 @@ class GUI(QDialog):
         elif event.key() == Qt.Key_Left:
             self.slider.setValue(self.slider.value() - 1)
         else:
+        # Eviter le crash de l'interface dans le cas d'un spam de touche
             try:
                 self.keyPressEvent(self, event)
             except TypeError:
@@ -171,11 +180,12 @@ class GUI(QDialog):
 
     def plot(self, pos=0):
         """Plot a video frame, temporal signals and spectorgam on the GUI."""
-        self.flightTime()
+        self.flightTime() # Calcul du temps de vpl pour les différents capteurs
         # Echantillons de signal correspondant à ces temps
         startEch = int(self.fEch * self.vidStart)
         endEch = int(self.fEch * self.vidEnd)
 
+        # Grandeurs contenues dans le fichier texte
         time = self.data[startEch:endEch + 1, 0]  # Slice des valeurs de signal correspondant à la vidéo
         micro = self.data[startEch:endEch + 1, 1]  # endEch + 1 car le dernier élément n'est pas compris dans le slice
         hydro = self.data[startEch:endEch + 1, 2]
