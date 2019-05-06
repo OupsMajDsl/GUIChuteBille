@@ -6,6 +6,7 @@ Routine permettant de synchroniser un fichier vidéo avec les signaux temporels 
 import sys
 import cv2
 import numpy as np
+import getpass
 import matplotlib.pyplot as plt
 import scipy.signal as sig
 from matplotlib.figure import Figure
@@ -26,21 +27,21 @@ class GUI(QDialog):
         super(GUI, self).__init__()
         self.setWindowTitle("Synchronisation Audio/vidéo pour la chute de billes")
         self.setWindowIcon(QIcon("icon.jpeg"))
-        self.setGeometry(200, 200, 500, 400)
+        self.setGeometry(200, 200, 800, 700)
 
-        self.user = "mathieu"
-        # Chemin des différents fichiers à charger
+        self.user = getpass.getuser()
+        # Chemin des différents fichiers à charger selon l'utilisateur
         if self.user == 'mathieu':
             self.pathVid = "/media/mathieu/Nouveau nom/videos_bille/{}.avi"
-            self.pathTxt = "/media/mathieu/Nouveau nom/mesures_acous/{}.txt"
+            self.pathTxt = "/media/mathieu/Nouveau nom/denoised_mesures_acous/denoised_{}.txt"
             self.pathCih = "/media/mathieu/Nouveau nom/videos_bille/{}.cih"
 
-        elif self.user == 'fabien':
+        elif self.user == 'fabouzz':
             self.pathVid = "/home/fabouzz/Vidéos/mesuresBille/{}.avi"
             self.pathTxt = "/home/fabouzz/Vidéos/mesuresBille/denoised_mesures_acous/denoised_{}.txt"
             self.pathCih = "/home/fabouzz/Vidéos/mesuresBille/{}.cih"
 
-        self.fEch = 5e5  # Fréquence d'echantillonage de la carte d'acquisition
+        self.Fs = 500e3  # Fréquence d'echantillonage de la carte d'acquisition
         self.nFrames = 0  # Initialisation: number of frames before loading the video
 
         # Position des capteurs et du point d'impact
@@ -73,11 +74,9 @@ class GUI(QDialog):
         self.figVid = Figure(figsize=(8, 4), dpi=100, tight_layout=True)
 
         # Création des canvas contenant les figures
-        self.canvasSpec = FigureCanvas(self.figSpec)
-        self.canvasTemp = FigureCanvas(self.figTemp)
-        self.canvasMicro = FigureCanvas(self.figMicro)
-        self.canvasSign = FigureCanvas(self.figSign)
-        self.canvasVid = FigureCanvas(self.figVid)
+        self.Canvas = [FigureCanvas(self.figVid), FigureCanvas(self.figSign), 
+                        FigureCanvas(self.figMicro), FigureCanvas(self.figTemp), 
+                        FigureCanvas(self.figSpec)]
 
         # Crétion du slider
         # self.toolbarSpec = NavigationToolbar(self.canvasSpec, self)
@@ -92,10 +91,10 @@ class GUI(QDialog):
         """GUI layout using previous objets."""
         MainLayout = QVBoxLayout()
         grid = QGridLayout()
-        grid.addWidget(self.canvasVid, 0, 0)
-        grid.addWidget(self.canvasSpec, 0, 1)
-        grid.addWidget(self.canvasTemp, 1, 1)
-        grid.addWidget(self.canvasMicro, 1, 0)
+        grid.addWidget(self.Canvas[0], 0, 0)
+        grid.addWidget(self.Canvas[4], 0, 1)
+        grid.addWidget(self.Canvas[3], 1, 1)
+        grid.addWidget(self.Canvas[2], 1, 0)
 
         HLayout = QHBoxLayout()
         HLayout.addWidget(self.filename)
@@ -104,7 +103,7 @@ class GUI(QDialog):
 
         MainLayout.addLayout(HLayout)
         MainLayout.addLayout(grid)
-        MainLayout.addWidget(self.canvasSign)
+        MainLayout.addWidget(self.Canvas[1])
         MainLayout.addWidget(self.Slider)
         self.setLayout(MainLayout)
 
@@ -135,19 +134,16 @@ class GUI(QDialog):
         self.Slider.setMaximum(self.nFrames)
         self.plot()
 
-    def spectrogram(self):
-        """Spectrogram creation."""
-        # A ajuster, ne marche pas
-        f, t, spectrogram = sig.spectrogram(self.data[:, 2], self.fEch)
-        return f, t, spectrogram
-
     def find_nearest(self, array, value):
         array = np.asarray(array)
         idx = (np.abs(array - value)).argmin()
         return idx
 
     def keyPressEvent(self, event):
-        """Keyboard navigation."""
+        """
+        gestion des touches flèche droite / flèche gauche pour avancer / reculer 
+        d'une seule image
+        """
         if event.key() == Qt.Key_Right:
             self.slider.setValue(self.slider.value() + 1)
         elif event.key() == Qt.Key_Left:
@@ -160,8 +156,7 @@ class GUI(QDialog):
                 pass
 
     def sliderUpdate(self):
-        """Update the bottom screen slider. Useful for updating datas."""
-        # print('SliderVal : {}'.format(str(self.Slider.value())))
+        """Update the bottom screen slider. Updates data."""
         self.plot(pos=self.Slider.value())
 
     def flightTime(self):
@@ -187,8 +182,8 @@ class GUI(QDialog):
         """Plot a video frame, temporal signals and spectorgam on the GUI."""
         self.flightTime() # Calcul du temps de vpl pour les différents capteurs
         # Echantillons de signal correspondant à ces temps
-        startEch = int(self.fEch * self.vidStart)
-        endEch = int(self.fEch * self.vidEnd)
+        startEch = int(self.Fs * self.vidStart)
+        endEch = int(self.Fs * self.vidEnd)
 
         # Grandeurs contenues dans le fichier texte
         time = np.asarray(self.data[startEch:endEch + 1, 0])  # Slice des valeurs de signal correspondant à la vidéo
@@ -211,7 +206,7 @@ class GUI(QDialog):
         ax.imshow(self.frame)
         ax.set_xticks([])
         ax.set_yticks([])
-        self.canvasVid.draw()
+        self.Canvas[0].draw()
 
         # Allure générale des signaux
         self.figSign.clear()
@@ -224,7 +219,7 @@ class GUI(QDialog):
         ax.set_xticks([])
         ax.set_yticks([])
         # ax.fill_between()
-        self.canvasSign.draw()
+        self.Canvas[1].draw()
 
         # Redéfinition des vecteurs micro et hydro pour tracer seulement une portion de signal
         # 
@@ -248,7 +243,7 @@ class GUI(QDialog):
         ax.set_title("Micro")
         ax.set_xlabel("Temps [s]")
         ax.set_ylabel("Pression [Pa]")
-        self.canvasMicro.draw()
+        self.Canvas[2].draw()
 
         # Tracé temporel de l'hydrophone
         self.figTemp.clear()
@@ -260,20 +255,21 @@ class GUI(QDialog):
         ax.set_title("Hydrophone temporel")
         ax.set_xlabel("Temps [s]")
         ax.set_ylabel("Pression [Pa]")
-        self.canvasTemp.draw()
+        self.Canvas[3].draw()
 
         # Tracé du spectrogramme
         self.figSpec.clear()
         ax = self.figSpec.add_subplot(111)
-        f, t, spectrogram = self.spectrogram()
-        ax.pcolormesh(t, f, spectrogram, cmap='Greens')
+        hydro = hydro / max(hydro)
+        f, t, SpecDatas = sig.stft(hydro, fs=self.Fs, nperseg=self.Fs/10)
+        ax.pcolormesh(t, f, np.abs(SpecDatas), cmap='Greens')
         ax.axvline(currentTime, color='r')
         ax.set_title("Hydrophone spectrogramme")
         ax.set_ylim(0, 30e3)
         ax.set_xlabel("Temps [s]")
         ax.set_ylabel("Fréquence [Hz]")
         ax.set_xlim(currentTime + self.tdv_hydro - float(self.WindowSize.text()), currentTime + self.tdv_hydro + float(self.WindowSize.text()))
-        self.canvasSpec.draw()
+        self.Canvas[4].draw()
 
 if __name__ == '__main__':
     app = QApplication(sys.argv)
