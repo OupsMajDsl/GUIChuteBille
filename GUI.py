@@ -32,9 +32,9 @@ class GUI(QDialog):
         self.user = getpass.getuser()
         # Chemin des différents fichiers à charger selon l'utilisateur
         if self.user == 'mathieu':
-            self.pathVid = "/media/mathieu/Nouveau nom/videos_bille/{}.avi"
-            self.pathTxt = "/media/mathieu/Nouveau nom/denoised_mesures_acous/denoised_{}.txt"
-            self.pathCih = "/media/mathieu/Nouveau nom/videos_bille/{}.cih"
+            self.pathVid = "/media/mathieu/EHDD/videos_bille/{}.avi"
+            self.pathTxt = "/media/mathieu/EHDD/denoised_mesures_acous/denoised_{}.txt"
+            self.pathCih = "/media/mathieu/EHDD/videos_bille/{}.cih"
 
         elif self.user == 'fabouzz':
             self.pathVid = "/home/fabouzz/Vidéos/mesuresBille/{}.avi"
@@ -109,6 +109,7 @@ class GUI(QDialog):
 
     def loadFiles(self):
         """Load file function."""
+        self.load.setDisabled(True)
         filename = self.filename.text()  # Récupération du filename dans la barre de texte
         self.cvVideo = cv2.VideoCapture(self.pathVid.format(filename))  # Chargement video
         self.data = np.loadtxt(self.pathTxt.format(filename))    # Chargement du fichier texte associé
@@ -132,6 +133,7 @@ class GUI(QDialog):
         # Ajustement du slider à la vidéo: il glisse de la première 
         # à la dernière frame de la vidéo
         self.Slider.setMaximum(self.nFrames)
+        self.load.setDisabled(False)
         self.plot()
 
     def find_nearest(self, array, value):
@@ -261,8 +263,14 @@ class GUI(QDialog):
         self.figSpec.clear()
         ax = self.figSpec.add_subplot(111)
         hydro = hydro / max(hydro)
-        f, t, SpecDatas = sig.stft(hydro, fs=self.Fs, nperseg=self.Fs/10)
-        ax.pcolormesh(t, f, np.abs(SpecDatas), cmap='Greens')
+        
+        NFFT = 2048       
+        overlap = 0.75
+        Pxx, freqs, bins, im = ax.specgram(micro[micro_min: micro_max], NFFT=NFFT, Fs=self.Fs,
+                    noverlap=NFFT*overlap, cmap='jet')
+
+
+        # ax.set_yscale("log")
         ax.axvline(currentTime, color='r')
         ax.set_title("Hydrophone spectrogramme")
         ax.set_ylim(0, 30e3)
