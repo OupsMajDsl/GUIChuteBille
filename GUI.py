@@ -266,7 +266,7 @@ class GUI(QDialog):
         
         NFFT = 2048       
         overlap = 0.75
-        Pxx, freqs, bins, im = ax.specgram(micro[micro_min: micro_max], NFFT=NFFT, Fs=self.Fs,
+        Pxx, freqs, bins, im = ax.specgram(micro, NFFT=NFFT, Fs=self.Fs,
                     noverlap=NFFT*overlap, cmap='jet')
 
 
